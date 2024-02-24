@@ -227,8 +227,22 @@ def parse_links(page: "IndexContent") -> Iterable[Link]:
     """
 
     content_type_l = page.content_type.lower()
+    import datetime
+    import os
+    if 'ASOF' in os.environ:
+        try:
+            ref_date = datetime.date.fromisoformat(os.environ["ASOF"])
+        except ValueError:
+            raise ValueError("Incorrect data format, should be YYYY-MM-DD")
     if content_type_l.startswith("application/vnd.pypi.simple.v1+json"):
         data = json.loads(page.content)
+        if 'ASOF' in os.environ:
+            files = []
+            for f in  data['files']:
+                datetime_object = datetime.date.fromisoformat(f['upload-time'][:10])
+                if datetime_object <= ref_date:
+                    files.append(f)
+            data['files']  = files
         for file in data.get("files", []):
             link = Link.from_json(file, page.url)
             if link is None:
